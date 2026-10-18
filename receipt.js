@@ -87,13 +87,31 @@ function resultUrl(entry) {
 }
 
 /* ── Receipt layout ──────────────────────────────────────────
- * Thermal paper is what heart monitors print on, so the receipt is a strip of
- * one: the trace on a millimeter grid, edge to edge, under a stamped number.
- * Labels are set in mono like a printout; numbers are set big and condensed.
- * Grays exist only where the dither should turn them into dot texture.
+ * Set like a race-day printout: black bands top and bottom, one condensed
+ * face as big as the paper allows, and mono for every label and reading.
+ * Solid black is kept for what matters; grays exist only where the dither
+ * should turn them into dot texture.
  */
-const MONO = '"SF Mono", ui-monospace, Menlo, monospace';
-const BIG = '"Helvetica Neue", "SF Pro Display", Arial, sans-serif';
+const D = '"Archivo", "Helvetica Neue", Arial, sans-serif';
+const M = '"JetBrains Mono", "SF Mono", Menlo, monospace';
+
+// The fonts go into the image itself: a page drawn as an SVG image can't
+// reach the booth's own font files.
+let fontCss = null;
+async function receiptFonts() {
+  if (fontCss !== null) return fontCss;
+  const inline = async url => {
+    const blob = await (await fetch(url)).blob();
+    return new Promise(res => { const f = new FileReader(); f.onload = () => res(f.result); f.readAsDataURL(blob); });
+  };
+  try {
+    const [a, m] = await Promise.all([inline('vendor/fonts/archivo.woff2'), inline('vendor/fonts/jetbrains-mono.woff2')]);
+    fontCss = `@font-face{font-family:"Archivo";src:url(${a}) format("woff2");font-weight:100 900;font-stretch:62% 125%}`
+      + `@font-face{font-family:"JetBrains Mono";src:url(${m}) format("woff2");font-weight:400 800}`;
+  } catch { fontCss = ''; }
+  await Promise.all([document.fonts.load(`850 40px ${D}`), document.fonts.load(`600 16px ${M}`)]).catch(() => {});
+  return fontCss;
+}
 
 // Everybody tested the same day as this result, for "you against today".
 function sameDay(e) {
@@ -102,187 +120,224 @@ function sameDay(e) {
 }
 
 /**
- * A gym-report row: a scale, everybody tested today as thin ticks on it, and
- * this person as the solid marker. It says where you sit, not whether that's
- * good; nothing on it is labeled normal or otherwise.
+ * Where you sit among everyone tested today: a ruler, a tick for each of
+ * them, and a solid marker for you. It says where, not whether that's good.
  */
-function scaleRow(label, value, unit, others, lo, hi, note) {
+function scaleRow(label, value, others, lo, hi, note) {
   const pos = v => clamp((v - lo) / (hi - lo), 0, 1) * 100;
-  const ticks = others.length >= 3 ? others.map(v => `<i style="left:${pos(v)}%"></i>`).join('') : '';
+  const ticks = others.length >= 3 ? others.map(v => `<i style="left:${pos(v).toFixed(2)}%"></i>`).join('') : '';
   return `
-    <div class="row">
-      <div class="rk"><b>${label}</b>${note ? `<span>${note}</span>` : ''}</div>
-      <div class="rbar">
-        <div class="track">${ticks}<em style="left:${pos(value)}%"></em></div>
-        <div class="ends"><span>${lo}</span><span>${hi}</span></div>
-      </div>
-      <div class="rv"><b>${value}</b><span>${unit}</span></div>
+    <div class="sr">
+      <div class="sr-k"><b>${label}</b><span>${note}</span></div>
+      <div class="sr-bar"><div class="sr-line">${ticks}<em style="left:${pos(value).toFixed(2)}%"></em></div><div class="sr-ends"><span>${lo}</span><span>${hi}</span></div></div>
+      <div class="sr-v">${value}</div>
     </div>`;
 }
 
-function receiptHtml(rep) {
+function receiptHtml(rep, fonts = '') {
   const e = rep.entry;
   const { max, estimated, zones } = zonesFor(e.age, e.rest, e.maxHr);
   const z2 = zones[1];
   const pace = paceFor(e.race);
   const at = new Date(e.at);
-  const date = at.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  const date = at.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase();
   const time = at.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
   const today = sameDay(e);
-  const others = key => today.map(x => x[key]).filter(v => typeof v === 'number');
+  const others = key => today.filter(x => x.id !== e.id).map(x => x[key]).filter(v => typeof v === 'number');
   const total = rep.phases[rep.phases.length - 1].end / 1000;
+  const pad2 = n => String(n).padStart(2, '0');
 
-  const dayLine = e.dayCount >= 5
-    ? (e.dayRank === 1
-      ? `Best recovery of the ${e.dayCount} people tested today so far.`
-      : `Faster than ${Math.round(((e.dayCount - e.dayRank) / (e.dayCount - 1)) * 100)}% of the ${e.dayCount} people tested today.`)
-    : e.dayCount > 1 && e.dayCount !== e.heatSize ? `${ordinal(e.dayRank)} of ${e.dayCount} people tested today.` : '';
-  const heatLine = e.heatSize > 1 ? `${ordinal(e.heatRank)} of ${e.heatSize} in heat ${e.heat}.` : '';
-  const dropMax = Math.ceil(Math.max(60, ...others('drop').map(v => v + 5)) / 10) * 10;
+  const places = [];
+  if (e.heatSize > 1) places.push(`${ordinal(e.heatRank)} of ${e.heatSize} in heat ${e.heat}`);
+  if (e.dayCount >= 5) {
+    places.push(e.dayRank === 1
+      ? `Best of ${e.dayCount} today`
+      : `Faster than ${Math.round(((e.dayCount - e.dayRank) / (e.dayCount - 1)) * 100)}% of ${e.dayCount} today`);
+  } else if (e.dayCount > 1 && e.dayCount !== e.heatSize) places.push(`${ordinal(e.dayRank)} of ${e.dayCount} today`);
+
+  const name = e.name.toUpperCase();
+  const nameSize = Math.round(clamp(540 / (Math.max(name.length, 3) * 0.5), 64, 150));
+  const dropMax = Math.ceil(Math.max(60, e.drop + 5, ...others('drop').map(v => v + 5)) / 10) * 10;
+  const wordmark = document.getElementById('p-wordmark').innerHTML.replace('<use href="#p-P"></use>', document.getElementById('p-P').outerHTML);
 
   return `
 <div class="r">
 <style>
-  .r { box-sizing: border-box; width: ${RECEIPT.dots}px; padding: 24px 12px 26px; background: #fff; color: #000;
-       font: 500 20px/1.3 ${BIG}; }
+  ${fonts}
+  .r { box-sizing: border-box; width: ${RECEIPT.dots}px; padding: 0 0 22px; background: #fff; color: #000; font: 500 19px/1.35 ${D}; }
   .r * { box-sizing: border-box; margin: 0; }
-  .top { display: flex; align-items: flex-end; justify-content: space-between; padding-bottom: 12px; border-bottom: 5px solid #000; }
-  .logo { display: block; width: 210px; height: auto; margin-bottom: 4px; }
-  .title { text-align: right; font: 800 34px/.95 ${BIG}; font-stretch: condensed; text-transform: uppercase; letter-spacing: .3px; }
-  .info { display: grid; grid-template-columns: 1.5fr 1fr .7fr; border-bottom: 2px solid #000; }
-  .info > div { padding: 9px 0 8px; min-width: 0; }
-  .info > div + div { padding-left: 12px; border-left: 2px solid #000; }
-  .k { display: block; font: 600 14px/1 ${BIG}; text-transform: uppercase; letter-spacing: 1px; }
-  .v { display: block; margin-top: 5px; font: 800 30px/1 ${BIG}; font-stretch: condensed; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .sec { margin-top: 26px; display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 6px; border-bottom: 2px solid #000; }
-  .sec h2 { font: 800 30px/1 ${BIG}; font-stretch: condensed; text-transform: uppercase; letter-spacing: .3px; }
-  .sec span { font: 600 15px/1 ${BIG}; text-transform: uppercase; letter-spacing: 1px; }
-  .hero { display: flex; align-items: flex-end; gap: 18px; margin-top: 14px; }
-  .hero b { font: 800 190px/.76 ${BIG}; font-stretch: condensed; letter-spacing: -7px; }
-  .hero div { padding-bottom: 4px; }
-  .hero strong { display: block; font: 800 34px/1 ${BIG}; font-stretch: condensed; }
-  .hero p { margin-top: 6px; font: 500 19px/1.3 ${BIG}; }
-  .facts { margin-top: 14px; font: 600 19px/1.4 ${BIG}; }
-  .row { display: grid; grid-template-columns: 128px 1fr 104px; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid #000; }
-  .rk b { display: block; font: 700 20px/1.1 ${BIG}; }
-  .rk span { display: block; margin-top: 2px; font: 500 14px/1.15 ${BIG}; }
-  .track { position: relative; height: 16px; border: 2px solid #000; background: #fff; }
-  .track i { position: absolute; top: 3px; bottom: 3px; width: 3px; margin-left: -1px; background: #8a8a8a; }
-  .track em { position: absolute; top: -9px; width: 14px; height: 30px; margin-left: -7px; background: #000; border: 3px solid #fff; outline: 2px solid #000; }
-  .ends { display: flex; justify-content: space-between; margin-top: 4px; font: 600 13px/1 ${BIG}; }
-  .rv { text-align: right; }
-  .rv b { display: block; font: 800 44px/.9 ${BIG}; font-stretch: condensed; }
-  .rv span { font: 600 14px/1 ${BIG}; text-transform: uppercase; }
-  .legend { margin-top: 8px; font: 500 14px/1.3 ${BIG}; }
-  .strip { display: block; margin-top: 12px; }
-  .zt { width: 100%; margin-top: 4px; border-collapse: collapse; font: 600 20px/1 ${BIG}; }
-  .zt td { padding: 9px 0; border-bottom: 1px solid #000; }
-  .zt td:first-child { width: 40px; font-weight: 800; }
-  .zt td.sw { width: 66px; }
-  .zt td.sw i { display: block; width: 52px; height: 20px; border: 2px solid #000; }
-  .zt td:last-child { text-align: right; font: 800 28px/1 ${BIG}; font-stretch: condensed; }
-  .zt tr.on td { font-weight: 800; }
-  .zt .tip { font-weight: 600; font-size: 16px; }
-  .guide { display: flex; justify-content: space-between; align-items: flex-end; gap: 14px; margin-top: 12px; }
-  .guide b { display: block; font: 800 64px/.88 ${BIG}; font-stretch: condensed; letter-spacing: -1px; white-space: nowrap; }
-  .guide b small { font: 700 20px ${BIG}; margin-left: 4px; letter-spacing: 0; }
-  .guide p { max-width: 240px; text-align: right; font: 500 17px/1.3 ${BIG}; }
-  .copy { margin-top: 12px; font: 500 18px/1.38 ${BIG}; }
-  .qr { display: flex; gap: 18px; align-items: center; margin-top: 22px; padding-top: 18px; border-top: 5px solid #000; }
-  .qr svg { flex: none; }
-  .qr .big { font: 800 44px/.92 ${BIG}; font-stretch: condensed; text-transform: uppercase; }
-  .qr .small { margin-top: 10px; font: 500 17px/1.32 ${BIG}; }
-  .foot { margin-top: 18px; padding-top: 10px; border-top: 2px solid #000; display: flex; justify-content: space-between; font: 600 13px/1.3 ${BIG}; text-transform: uppercase; letter-spacing: .5px; }
+  .r .d { font-family: ${D}; font-stretch: 62%; font-weight: 850; text-transform: uppercase; line-height: .8; }
+  .r .m { font-family: ${M}; font-weight: 700; font-size: 15px; letter-spacing: 1.6px; text-transform: uppercase; line-height: 1.3; }
+  .r .in { padding: 0 12px; }
+
+  .r .band { display: flex; align-items: center; justify-content: space-between; padding: 18px 16px; background: #000; color: #fff; }
+  .r .band svg { display: block; width: 214px; height: auto; }
+  .r .band .m { text-align: right; font-size: 14px; }
+  .r .meta { display: flex; justify-content: space-between; padding: 9px 12px 8px; border-bottom: 3px solid #000; }
+
+  .r .who { padding: 22px 12px 0; }
+  .r .who .d { font-size: ${nameSize}px; letter-spacing: -.5px; white-space: nowrap; overflow: hidden; }
+  .r .who .m { margin-top: 10px; }
+
+  .r .sec { display: flex; justify-content: space-between; align-items: baseline; margin: 26px 12px 0; padding-top: 8px; border-top: 6px solid #000; }
+
+  .r .hero { display: flex; align-items: flex-end; gap: 14px; padding: 16px 12px 0; }
+  .r .hero .n { font-size: 300px; line-height: .74; letter-spacing: -4px; }
+  .r .hero .u { padding-bottom: 6px; }
+  .r .hero .u .d { font-size: 62px; line-height: .84; }
+  .r .hero .u .m { margin-top: 10px; }
+  .r .calc { display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; margin: 18px 12px 0; padding: 12px 0; border-top: 2px solid #000; border-bottom: 2px solid #000; }
+  .r .calc .d { font-size: 58px; }
+  .r .calc .m { font-size: 13px; margin-bottom: 6px; }
+  .r .calc .mid { padding: 0 10px 6px; text-align: center; }
+  .r .calc .mid .m { margin: 0; }
+  .r .calc .mid .arrow { font: 700 30px/1 ${M}; }
+  .r .calc > div:last-child { text-align: right; }
+
+  .r .places { margin: 14px 12px 0; }
+  .r .places div { padding: 11px 14px 9px; background: #000; color: #fff; font-size: 34px; }
+  .r .places div + div { margin-top: 6px; background: #fff; color: #000; box-shadow: inset 0 0 0 3px #000; }
+
+  .r .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; margin: 0 12px; }
+  .r .stats > div { padding: 14px 0 4px; }
+  .r .stats > div + div { padding-left: 14px; border-left: 2px solid #000; }
+  .r .stats .d { margin-top: 8px; font-size: 64px; }
+  .r .stats small { font: 700 13px ${M}; letter-spacing: 1px; margin-left: 4px; }
+  .r .stats .note { margin-top: 6px; font: 500 14px/1.25 ${D}; }
+
+  .r .trace { display: block; margin: 12px 12px 0; }
+
+  .r .sr { display: grid; grid-template-columns: 112px 1fr 74px; align-items: center; gap: 14px; margin: 0 12px; padding: 12px 0; border-bottom: 2px solid #000; }
+  .r .sr-k b { display: block; font: 700 15px/1.2 ${M}; letter-spacing: 1.4px; text-transform: uppercase; }
+  .r .sr-k span { display: block; margin-top: 3px; font: 500 14px/1.2 ${D}; }
+  .r .sr-line { position: relative; height: 22px; background: linear-gradient(#000, #000) center / 100% 3px no-repeat; }
+  .r .sr-line i { position: absolute; top: 4px; bottom: 4px; width: 3px; margin-left: -1px; background: #777; }
+  .r .sr-line em { position: absolute; top: 0; bottom: 0; width: 10px; margin-left: -5px; background: #000; }
+  .r .sr-ends { display: flex; justify-content: space-between; margin-top: 3px; font: 600 12px/1 ${M}; }
+  .r .sr-v { text-align: right; font-family: ${D}; font-stretch: 62%; font-weight: 850; font-size: 54px; line-height: .8; }
+  .r .legend { margin: 8px 12px 0; font: 600 13px/1.35 ${M}; letter-spacing: .6px; text-transform: uppercase; }
+
+  .r .zbar { display: grid; grid-template-columns: repeat(5, 1fr); margin: 14px 12px 0; border: 3px solid #000; }
+  .r .zbar > div { height: 58px; display: flex; align-items: flex-end; padding: 0 0 5px 7px; font: 800 20px/1 ${M}; }
+  .r .zbar > div + div { border-left: 3px solid #000; }
+  .r .zr { display: grid; grid-template-columns: repeat(5, 1fr); margin: 6px 12px 0; font: 700 14px/1.2 ${M}; }
+  .r .zr div { padding-left: 2px; }
+  .r .zr b { display: block; font: 500 13px/1.2 ${D}; text-transform: none; }
+  .r .zr .on b { font-weight: 800; }
+  .r .zr .on b::before { content: "▲ "; }
+  .r .zbasis { margin: 10px 12px 0; font: 500 14px/1.3 ${D}; }
+
+  .r .easy { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; margin: 14px 12px 0; }
+  .r .easy .d { font-size: 80px; white-space: nowrap; }
+  .r .easy .d small { font: 700 15px ${M}; letter-spacing: 1px; margin-left: 6px; }
+  .r .easy p { max-width: 210px; padding-bottom: 4px; text-align: right; font: 500 16px/1.3 ${D}; }
+  .r .copy { margin: 14px 12px 0; font: 500 18px/1.4 ${D}; }
+
+  .r .end { display: flex; gap: 18px; align-items: center; margin-top: 28px; padding: 18px 16px; background: #000; color: #fff; }
+  .r .end .q { flex: none; padding: 8px; background: #fff; line-height: 0; }
+  .r .end .d { font-size: 64px; line-height: .84; }
+  .r .end .m { margin-top: 12px; font-size: 13px; }
+  .r .foot { display: flex; justify-content: space-between; margin: 10px 12px 0; font: 700 12px/1.3 ${M}; letter-spacing: 1px; text-transform: uppercase; }
 </style>
 
-<div class="top">
-  <svg class="logo" viewBox="0 0 2044 241" fill="#000">${document.getElementById('p-wordmark').innerHTML.replace('<use href="#p-P"></use>', document.getElementById('p-P').outerHTML)}</svg>
-  <div class="title">Heart rate<br>report</div>
+<div class="band"><svg viewBox="0 0 2044 241" fill="#fff">${wordmark}</svg><div class="m">Heart rate<br>recovery test</div></div>
+<div class="meta m"><span>No. ${String(e.no || 1).padStart(4, '0')}</span><span>${date} ${time}</span><span>${e.heat ? `Heat ${pad2(e.heat)}${e.lane ? ` · L${e.lane}` : ''}` : ''}</span></div>
+
+<div class="who"><div class="d">${esc(name)}</div><div class="m">${[e.house, `Age ${e.age}`].filter(Boolean).map(esc).join(' · ')}</div></div>
+
+<div class="sec m"><span>Recovery score</span><span>● Measured</span></div>
+<div class="hero"><div class="d n">${e.drop}</div><div class="u"><div class="d">BPM<br>drop</div><div class="m">in 60 sec</div></div></div>
+<div class="calc">
+  <div><div class="m">At the finish</div><div class="d">${e.endHr}</div></div>
+  <div class="mid"><div class="arrow">→</div><div class="m">60 s</div></div>
+  <div><div class="m">A minute later</div><div class="d">${e.recHr}</div></div>
 </div>
-<div class="info">
-  <div><span class="k">Name</span><span class="v">${esc(e.name)}</span></div>
-  <div><span class="k">House</span><span class="v">${esc(e.house)}</span></div>
-  <div><span class="k">Age</span><span class="v">${e.age}</span></div>
-</div>
-<div class="info">
-  <div><span class="k">Date</span><span class="v">${esc(date)} · ${time}</span></div>
-  <div><span class="k">Heat${e.lane ? ' · Lane' : ''}</span><span class="v">${e.heat || '-'}${e.lane ? ` · ${e.lane}` : ''}</span></div>
-  <div><span class="k">No.</span><span class="v">${String(e.no || 1).padStart(4, '0')}</span></div>
+${places.length ? `<div class="places">${places.map(p => `<div class="d">${esc(p)}</div>`).join('')}</div>` : ''}
+
+<div class="stats">
+  <div><div class="m">Resting</div><div class="d">${e.rest}<small>BPM</small></div><div class="note">Sitting still</div></div>
+  <div><div class="m">Peak</div><div class="d">${e.peak}<small>BPM</small></div><div class="note">Not scored</div></div>
+  <div><div class="m">Heartbeats</div><div class="d">${e.beats || '-'}</div><div class="note">In ${mmss(total)}</div></div>
 </div>
 
-<div class="sec"><h2>Recovery score</h2><span>● Measured</span></div>
-<div class="hero">
-  <b>${e.drop}</b>
-  <div><strong>BPM DROP</strong><p>How far your heart rate fell in the first minute after high knees.</p></div>
+<div class="sec m"><span>Heart rate trace</span><span>● Measured</span></div>
+${traceSvg(rep, RECEIPT.dots - 24, 320)}
+
+<div class="sec m"><span>You vs today</span><span>${today.length} tested</span></div>
+${scaleRow('Recovery', e.drop, others('drop'), 0, dropMax, 'Higher is faster')}
+${scaleRow('Resting', e.rest, others('rest'), 40, 120, 'Sitting still')}
+${scaleRow('Peak', e.peak, others('peak'), 100, 220, 'Not scored')}
+<p class="legend">█ You &nbsp; ▏ Everyone else today${today.length < 4 ? ' (from 4 people)' : ''}</p>
+
+<div class="sec m"><span>Training zones</span><span>○ Estimated</span></div>
+<div class="zbar">${zones.map((z, i) => `<div style="background:${['#fff', '#d4d4d4', '#9a9a9a', '#4a4a4a', '#000'][i]};color:${i > 2 ? '#fff' : '#000'}">${z.n}</div>`).join('')}</div>
+<div class="zr">${zones.map(z => `<div class="${z.n === 2 ? 'on' : ''}">${z.lo}–${z.hi}<b>${z.n === 2 ? 'Easy runs' : z.name}</b></div>`).join('')}</div>
+<p class="zbasis">Beats per minute, from your resting ${e.rest} and a max of ${max}${estimated ? ' estimated from age' : ' as entered'}.</p>
+
+<div class="sec m"><span>${pace ? 'Easy run pace' : 'Easy runs'}</span><span>○ Estimated</span></div>
+<div class="easy">
+  <div class="d">${pace ? `${mmss(pace.fast)}–${mmss(pace.slow)}<small>/KM</small>` : `${z2.lo}–${z2.hi}<small>BPM</small>`}</div>
+  <p>${pace ? `From your ${e.race.dist === 800 ? '800 m' : '1 km'} in ${mmss(e.race.secs)}. Around ${z2.lo}–${z2.hi} bpm.` : 'Any pace that keeps you in zone 2.'} Slow enough to talk.</p>
 </div>
-<p class="facts">${e.endHr} bpm at the finish, ${e.recHr} bpm a minute later.${heatLine ? `<br>${heatLine}` : ''}${dayLine ? `<br>${dayLine}` : ''}</p>
+<p class="copy">Recovery climbs as you get fitter. Three easy runs a week is the simplest way to move it.</p>
 
-<div class="sec"><h2>You vs today</h2><span>● Measured</span></div>
-${scaleRow('Recovery', e.drop, 'bpm drop', others('drop'), 0, dropMax, 'higher = faster')}
-${scaleRow('Resting', e.rest, 'bpm', others('rest'), 40, 120, 'sitting still')}
-${scaleRow('Peak', e.peak, 'bpm', others('peak'), 100, 220, 'not scored')}
-<p class="legend">■ You &nbsp; | Everyone else tested today${today.length < 3 ? ' (appears once three people have done it)' : ''}</p>
-
-<div class="sec"><h2>Heart rate trace</h2><span>${e.beats ? `${e.beats} beats in ${mmss(total)}` : ''}</span></div>
-${stripSvg(rep, RECEIPT.dots - 24, 300)}
-
-<div class="sec"><h2>Training zones</h2><span>○ Estimated</span></div>
-<table class="zt">${zones.map((z, i) => `<tr class="${z.n === 2 ? 'on' : ''}"><td>${z.n}</td><td class="sw"><i style="background:${['#fff', '#d0d0d0', '#a0a0a0', '#5a5a5a', '#000'][i]}"></i></td><td>${z.name}${z.n === 2 ? ' <span class="tip">← easy runs</span>' : ''}</td><td>${z.lo}–${z.hi}</td></tr>`).join('')}</table>
-<p class="legend">From your resting heart rate and a max of ${max}${estimated ? ', estimated from age' : ', as entered'}.</p>
-
-<div class="sec"><h2>${pace ? 'Easy run pace' : 'Easy runs'}</h2><span>○ Estimated</span></div>
-<div class="guide">
-  <b>${pace ? `${mmss(pace.fast)}–${mmss(pace.slow)}<small>/km</small>` : `${z2.lo}–${z2.hi}<small>bpm</small>`}</b>
-  <p>${pace ? `From your ${e.race.dist === 800 ? '800 m' : '1 km'} in ${mmss(e.race.secs)}, around ${z2.lo}–${z2.hi} bpm.` : 'Any pace that keeps you in zone 2.'} Slow enough to talk.</p>
-</div>
-<p class="copy">Recovery tends to climb as you get fitter. Three easy runs a week is the simplest way to see it move.</p>
-
-<div class="qr">
-  ${qrSvg(resultUrl(e), 220)}
-  <div><div class="big">Beat ${Math.max(e.drop, 0)} next time</div><div class="small">Scan to keep this report on pacer.club and set a weekly goal.</div></div>
+<div class="end">
+  <div class="q">${qrSvg(resultUrl(e), 184)}</div>
+  <div><div class="d">Beat ${Math.max(e.drop, 0)}<br>next time</div><div class="m">Scan to save it on pacer.club</div></div>
 </div>
 <div class="foot"><span>● Measured ○ Estimated</span><span>For fun, not medical advice</span></div>
 </div>`;
 }
 
-// The trace: a light 5 mm grid, the high-knees stretch shaded, and the three
-// measured points called out.
-function stripSvg(rep, w, h) {
+// The trace: high knees as a solid black block with the line running white
+// through it, and the drop measured off like a dimension on a drawing.
+function traceSvg(rep, w, h) {
   const { samples, phases, marks } = rep;
   const end = phases[phases.length - 1].end;
-  const pad = { t: 46, r: 16, b: 34, l: 16 };
+  const pad = { t: 48, r: 100, b: 40, l: 4 };
   const pw = w - pad.l - pad.r, ph = h - pad.t - pad.b;
   const hrs = samples.map(s => s.hr).concat(marks.map(m => m.hr));
-  const lo = Math.floor((Math.min(...hrs) - 8) / 10) * 10, hi = Math.ceil((Math.max(...hrs) + 14) / 10) * 10;
+  const lo = Math.floor((Math.min(...hrs) - 6) / 10) * 10, hi = Math.ceil((Math.max(...hrs) + 6) / 10) * 10;
   const X = t => pad.l + (t / end) * pw;
   const Y = v => pad.t + (1 - (v - lo) / (hi - lo)) * ph;
   const xy = samples.filter(s => s.t <= end).map(s => [X(s.t), Y(s.hr)]);
   const path = svgPath();
   if (xy.length > 1) smoothPath(path, xy);
 
-  // Light 5 mm lines, like a chart in a report rather than monitor paper.
-  let grid = '';
-  for (let x = 0; x <= w; x += RECEIPT.dpmm * 5) grid += `<line x1="${x}" x2="${x}" y1="0" y2="${h - pad.b + 4}" stroke="#c4c4c4" stroke-width="2"/>`;
-  for (let y = 0; y <= h - pad.b; y += RECEIPT.dpmm * 5) grid += `<line x1="0" x2="${w}" y1="${y}" y2="${y}" stroke="#c4c4c4" stroke-width="2"/>`;
   const ex = phases.find(p => p.id === 'exercise');
   const rec = phases.find(p => p.id === 'recover');
-  const tag = (x, text) => `<text x="${x}" y="${h - 10}" font-size="17" font-weight="700" letter-spacing="1">${text}</text>`;
-  const callouts = marks.filter(m => !m.label.startsWith('Peak')).map(m => {
-    const x = X(m.t), y = Y(m.hr);
-    const short = m.label.replace('Resting ', 'REST ').replace('Finish ', 'END ').replace('60 s later ', '+60s ');
-    const lx = clamp(x, pad.l + 56, pad.l + pw - 56), ly = m.below ? y + 34 : y - 16;
-    return `<circle cx="${x}" cy="${y}" r="9" fill="#fff" stroke="#000" stroke-width="5"/>
-      <text x="${lx}" y="${ly}" text-anchor="middle" font-size="20" font-weight="800" stroke="#fff" stroke-width="8" paint-order="stroke" stroke-linejoin="round">${short}</text>`;
-  }).join('');
+  const finish = marks.find(m => m.label.startsWith('Finish'));
+  const later = marks.find(m => m.label.startsWith('60 s'));
+  const rest = marks.find(m => m.label.startsWith('Resting'));
+  const bx = X(ex.start), bw = X(ex.end) - bx;
 
-  return `<svg class="strip" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" font-family='${BIG}'>
+  let grid = '';
+  for (let v = Math.ceil(lo / 20) * 20; v <= hi; v += 20) {
+    grid += `<line x1="${pad.l}" x2="${pad.l + pw}" y1="${Y(v)}" y2="${Y(v)}" stroke="#000" stroke-width="2" stroke-dasharray="2 6"/>`;
+  }
+  const dot = (m, fill) => `<circle cx="${X(m.t)}" cy="${Y(m.hr)}" r="8" fill="${fill}" stroke="#000" stroke-width="4"/>`;
+  const fx = X(finish.t), fy = Y(finish.hr), lx = X(later.t), ly = Y(later.hr);
+  const dimX = pad.l + pw + 18;
+  const tag = (x, text, anchor = 'start') => `<text x="${x}" y="${h - 12}" text-anchor="${anchor}" font-family='${M}' font-size="14" font-weight="700" letter-spacing="1.4">${text}</text>`;
+
+  return `<svg class="trace" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+    <defs><clipPath id="ex"><rect x="${bx}" y="0" width="${bw}" height="${h - pad.b + 6}"/></clipPath></defs>
     ${grid}
-    <rect x="${X(ex.start)}" y="0" width="${X(ex.end) - X(ex.start)}" height="${h - pad.b + 4}" fill="#000" fill-opacity=".09"/>
+    <rect x="${bx}" y="0" width="${bw}" height="${h - pad.b + 6}" fill="#000"/>
     <path d="${path.d}" fill="none" stroke="#000" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
-    ${callouts}
-    <rect x="0" y="${h - pad.b + 4}" width="${w}" height="${pad.b}" fill="#fff"/>
-    ${tag(X(0) + 2, 'REST')}${tag(X(ex.start) + 6, 'HIGH KNEES')}${tag(X(rec.start) + 6, 'RECOVER')}
-    <line x1="0" x2="${w}" y1="${h - pad.b + 4}" y2="${h - pad.b + 4}" stroke="#000" stroke-width="3"/>
+    <path d="${path.d}" fill="none" stroke="#fff" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" clip-path="url(#ex)"/>
+    ${dot(rest, '#fff')}${dot(later, '#000')}
+    <circle cx="${fx}" cy="${fy}" r="9" fill="#fff" stroke="#000" stroke-width="4"/>
+    <text x="${X(rest.t)}" y="${Y(rest.hr) - 18}" text-anchor="middle" font-family='${M}' font-size="15" font-weight="800">${rest.hr}</text>
+    <text x="${fx + 14}" y="${fy - 14}" font-family='${M}' font-size="15" font-weight="800">${finish.hr}</text>
+    <text x="${lx - 4}" y="${ly + 30}" text-anchor="end" font-family='${M}' font-size="15" font-weight="800">${later.hr}</text>
+    <line x1="${fx}" x2="${dimX + 8}" y1="${fy}" y2="${fy}" stroke="#000" stroke-width="2" stroke-dasharray="4 4"/>
+    <line x1="${lx}" x2="${dimX + 8}" y1="${ly}" y2="${ly}" stroke="#000" stroke-width="2" stroke-dasharray="4 4"/>
+    <line x1="${dimX}" x2="${dimX}" y1="${fy}" y2="${ly}" stroke="#000" stroke-width="3"/>
+    <path d="M${dimX - 7} ${ly - 12}L${dimX} ${ly}L${dimX + 7} ${ly - 12}" fill="none" stroke="#000" stroke-width="3"/>
+    <text x="${dimX + 10}" y="${(fy + ly) / 2 + 15}" font-family='${D}' font-stretch="62%" font-weight="850" font-size="42">−${Math.max(finish.hr - later.hr, 0)}</text>
+    <line x1="0" x2="${w}" y1="${h - pad.b + 6}" y2="${h - pad.b + 6}" stroke="#000" stroke-width="3"/>
+    ${tag(pad.l, '01 REST')}${tag(bx + 8, '02 HIGH KNEES')}${tag(X(rec.start) + 8, '03 RECOVER')}
   </svg>`;
 }
 
@@ -315,7 +370,7 @@ async function renderReceipt(rep) {
   // Lay it out for real first, to learn how tall it is.
   const host = document.createElement('div');
   host.style.cssText = 'position:fixed;left:-10000px;top:0;';
-  host.innerHTML = receiptHtml(rep);
+  host.innerHTML = receiptHtml(rep, await receiptFonts());
   document.body.append(host);
   const node = host.firstElementChild;
   const height = Math.ceil(node.getBoundingClientRect().height);
