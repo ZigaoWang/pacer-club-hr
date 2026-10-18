@@ -48,7 +48,7 @@
       <div class="menu" id="menu" role="menu" hidden>
         <button class="menu-item" id="m-demo" role="menuitemcheckbox" aria-checked="false">Demo armbands <span class="switch"></span></button>
         <button class="menu-item" id="m-sound" role="menuitemcheckbox" aria-checked="true">Sound cues <span class="switch"></span></button>
-        <button class="menu-item" id="m-dark" role="menuitemcheckbox" aria-checked="false">Dark mode <span class="switch"></span></button>
+        <button class="menu-item" id="m-dark" role="menuitemcheckbox" aria-checked="false">Light screen <span class="switch"></span></button>
         <button class="menu-item" id="m-autoprint" role="menuitemcheckbox" aria-checked="true">Print after each test <span class="switch"></span></button>
         <div class="menu-sep"></div>
         <button class="menu-item" id="m-preview" role="menuitem">Show receipt <span class="hint">1-bit preview</span></button>
@@ -71,25 +71,29 @@
 
   <!-- 1 · Live: the shared stage on top, one lane per armband below -->
   <main class="view view-live" id="view-live">
-    <section class="card stage" id="stage">
+    <section class="stage" id="stage" data-phase="">
       <div class="stage-main">
         <div class="stage-text">
+          <p class="stage-kick mono" id="st-kick"></p>
           <h1 class="stage-title" id="st-title"></h1>
           <p class="stage-sub" id="st-sub"></p>
         </div>
         <div class="stage-side" id="st-idle">
-          <button class="btn btn-lg" id="st-start">Start</button>
-          <p class="stage-note" id="st-note"></p>
+          <div class="best" id="st-best" hidden></div>
+          <div class="stage-go">
+            <button class="btn btn-lg" id="st-start">Start <span class="arrow">→</span></button>
+            <p class="stage-note" id="st-note"></p>
+          </div>
         </div>
         <div class="stage-count" id="st-run" hidden>
           <div class="count" id="t-count"><span id="t-num"></span></div>
-          <div class="count-label" id="t-label">seconds</div>
+          <div class="count-label mono" id="t-label">seconds</div>
         </div>
       </div>
       <div class="track" id="st-track" hidden>
-        <div class="seg" data-step="0"><div class="bar"><b></b></div><span>Sit still</span></div>
-        <div class="seg" data-step="1"><div class="bar"><b></b></div><span>High knees</span></div>
-        <div class="seg" data-step="2"><div class="bar"><b></b></div><span>Recover</span></div>
+        <div class="seg" data-step="0"><div class="bar"><b></b></div><span class="mono"><i>01</i>Sit still</span></div>
+        <div class="seg" data-step="1"><div class="bar"><b></b></div><span class="mono"><i>02</i>High knees</span></div>
+        <div class="seg" data-step="2"><div class="bar"><b></b></div><span class="mono"><i>03</i>Recover</span></div>
         <button class="link-btn stop-btn" id="t-stop">Stop</button>
       </div>
     </section>
@@ -99,13 +103,13 @@
 
   <!-- 2 · Head to head -->
   <main class="view view-group" id="view-group" hidden>
-    <div class="report-head">
+    <div class="page-head">
       <div>
-        <h1 class="report-name" id="g-title">Results</h1>
-        <div class="report-meta">Ranked by recovery: how far heart rate dropped in the minute after high knees</div>
+        <p class="page-kick mono">Ranked by recovery · bpm drop in the 60 s after high knees</p>
+        <h1 class="page-title" id="g-title">Results</h1>
       </div>
-      <div class="report-actions">
-        <span class="print-note" id="g-print-note"></span>
+      <div class="page-actions">
+        <span class="print-note mono" id="g-print-note"></span>
         <button class="btn btn-quiet" id="g-print">Print all again</button>
         <button class="btn" id="g-done">Next group</button>
       </div>
@@ -115,44 +119,43 @@
 
   <!-- 3 · Report -->
   <main class="view view-report" id="view-report" hidden>
-    <div class="report-head">
+    <div class="page-head">
       <div>
-        <h1 class="report-name" id="r-name"></h1>
-        <div class="report-meta" id="r-meta"></div>
+        <p class="page-kick mono" id="r-meta"></p>
+        <h1 class="page-title" id="r-name"></h1>
       </div>
-      <div class="report-actions">
+      <div class="page-actions">
         <button class="btn btn-quiet" id="r-back" hidden>Back to group</button>
-        <span class="print-note" id="r-print-note"></span>
+        <span class="print-note mono" id="r-print-note"></span>
         <button class="btn btn-quiet" id="r-print">Print again</button>
         <button class="btn btn-quiet" id="r-board">Leaderboard</button>
         <button class="btn" id="r-next">Next group</button>
       </div>
     </div>
 
-    <section class="card report-main">
-      <div class="source"><span class="tag tag-measured">Measured</span>Read by the armband during your test</div>
-      <div class="figures">
+    <section class="report-main">
+            <div class="figures">
+        <div class="figure figure-hero">
+          <div class="k mono">Recovery · 60 s</div>
+          <div class="v"><span id="r-drop"></span><small>bpm<br>drop</small></div>
+          <div class="note mono" id="r-drop-note"></div>
+        </div>
         <div class="figure">
-          <div class="k">Resting</div>
+          <div class="k mono">Resting <span class="tag tag-measured"></span></div>
           <div class="v"><span id="r-rest"></span><small>bpm</small></div>
           <div class="note">Average while sitting still</div>
         </div>
         <div class="figure">
-          <div class="k">Peak</div>
+          <div class="k mono">Peak <span class="tag tag-measured"></span></div>
           <div class="v"><span id="r-peak"></span><small>bpm</small></div>
           <div class="note">Highest reading, not scored</div>
-        </div>
-        <div class="figure figure-hero">
-          <div class="k">Recovery in 60 seconds</div>
-          <div class="v"><span id="r-drop"></span><small>bpm</small></div>
-          <div class="note" id="r-drop-note"></div>
         </div>
       </div>
       <div class="report-chart"><canvas id="r-chart"></canvas></div>
     </section>
 
     <aside class="report-side">
-      <section class="card side-card">
+      <section class="side-card">
         <h3>Heart rate zones <span class="tag">Estimated</span></h3>
         <div class="zones" id="r-zones"></div>
         <p class="basis" id="r-zone-basis"></p>
@@ -161,10 +164,10 @@
         <p class="pace-note" id="r-guide-note"></p>
         <p class="basis" id="r-guide-basis"></p>
       </section>
-      <section class="card side-card qr-card">
+      <section class="side-card qr-card">
         <div class="qr" id="r-qr"></div>
         <div>
-          <h3>Your result on pacer.club</h3>
+          <h3>Keep it on pacer.club</h3>
           <p>Scan to keep it and save it to your profile.</p>
           <p class="fine">For fun, not medical advice.</p>
         </div>
@@ -174,19 +177,19 @@
 
   <!-- 4 · Leaderboard -->
   <main class="view view-board" id="view-board" hidden>
-    <div class="board-head">
+    <div class="page-head">
       <div>
-        <h1 class="board-title">Leaderboard</h1>
-        <div class="board-sub">Ranked by how far heart rate dropped in the minute after high knees</div>
+        <p class="page-kick mono" id="b-kick">Ranked by recovery · bpm drop in the 60 s after high knees</p>
+        <h1 class="page-title">Leaderboard</h1>
       </div>
       <button class="btn" id="b-back">Back</button>
     </div>
-    <div class="card board" id="board"></div>
+    <div class="board" id="board"></div>
   </main>
 
   <!-- The next group, typed in while the current one is still going -->
   <div class="drawer-wrap" id="drawer" hidden>
-    <section class="drawer card" role="dialog" aria-label="Next group">
+    <section class="drawer" role="dialog" aria-label="Next group">
       <header class="drawer-head">
         <div>
           <h2>Next group</h2>

@@ -38,13 +38,13 @@ const HOUSES = ['Spring', 'Summer', 'Autumn', 'Winter', 'Other'];
 // to; "ready" is a short beat between sitting and moving so nobody is caught out.
 const PHASES = [
   { id: 'rest',     step: 0, secs: 20, label: 'Rest',
-    title: 'Sit still and breathe normally', sub: 'We’re finding your resting heart rate.' },
+    title: 'Sit still', sub: 'Breathe normally. We’re finding your resting heart rate.' },
   { id: 'ready',    step: 1, secs: 5,  label: 'Get ready',
-    title: 'Stand up, high knees next', sub: 'Knees up to hip height, as fast as you can.' },
+    title: 'Stand up', sub: 'High knees next: knees to hip height, as fast as you can.' },
   { id: 'exercise', step: 1, secs: 60, label: 'High knees',
-    title: 'High knees!', sub: 'Knees up to hip height, as fast as you can. Keep going!' },
+    title: 'High knees', sub: 'Knees to hip height, as fast as you can. Keep going!' },
   { id: 'recover',  step: 2, secs: 60, label: 'Recover',
-    title: 'Sit down and relax', sub: 'Breathe normally while we see how far your heart rate drops in one minute.' },
+    title: 'Sit down', sub: 'Breathe normally. Watch how far your heart rate drops in one minute.' },
 ];
 
 // Resting = the average of the last stretch of the rest phase. If heart rate
@@ -104,7 +104,7 @@ const S = {
   freshId: null,
   entries: [],
   demo: false,
-  prefs: { sound: true, theme: 'auto', autoPrint: true },
+  prefs: { sound: true, theme: 'dark', autoPrint: true },
 };
 
 const blankPerson = () => ({ name: '', house: null, age: '', max: '', dist: 1000, time: '' });
@@ -373,7 +373,7 @@ function renderDrawer() {
     const bad = problems(p);
     return `
       <div class="dl" data-lane="${i}">
-        <div class="dl-head"><span class="lane-n">${i + 1}</span><strong>Lane ${i + 1}</strong><button class="link-btn" data-clear>Clear</button></div>
+        <div class="dl-head"><strong>Lane ${i + 1}</strong><button class="link-btn" data-clear>Clear</button></div>
         <div><div class="label">First name</div><input class="input" data-f="name" maxlength="20" autocomplete="off" spellcheck="false" value="${esc(p.name)}" placeholder="Nobody in this lane"></div>
         <div><div class="label">House</div><div class="choices">${HOUSES.map(h => choice('data-house', h, h, p.house === h)).join('')}</div></div>
         <div class="row-3">
@@ -557,9 +557,10 @@ function updatePhaseUi() {
   drawTrack(performance.now() - r.start);
   const settling = ph.id === 'rest' && r.restExtra > 0;
   $('stage').dataset.phase = ph.id;
-  $('st-title').textContent = settling ? 'Almost there. Keep still' : ph.title;
-  $('st-sub').textContent = settling ? 'Heart rates are still settling.' : ph.sub;
-  $('t-label').textContent = ph.id === 'ready' ? 'get ready' : 'seconds';
+  $('st-kick').textContent = `Step ${ph.step + 1} of 3 · ${ph.label}`;
+  $('st-title').textContent = settling ? 'Keep still' : ph.title;
+  $('st-sub').textContent = settling ? 'Almost there. Heart rates are still settling.' : ph.sub;
+  $('t-label').textContent = ph.id === 'ready' ? 'Get ready' : 'Seconds';
   document.querySelectorAll('#st-track .seg').forEach(el => {
     const i = Number(el.dataset.step);
     el.dataset.state = i < ph.step ? 'done' : i === ph.step ? 'now' : 'next';
@@ -684,8 +685,8 @@ function finishRun() {
 
 /* ── Stage and lanes on screen ───────────────────────────── */
 
-const IDLE_TITLE = 'How fast does your heart recover?';
-const IDLE_SUB = 'Up to three at once. Sit still, a minute of high knees, then see how far your heart rate drops in the next minute.';
+const IDLE_TITLE = 'How fast does<br>your heart recover?';
+const IDLE_SUB = 'Up to three at once. Sit still, one minute of high knees, then see how far your heart rate drops in the next minute.';
 
 function renderStage() {
   const running = !!S.run;
@@ -694,9 +695,20 @@ function renderStage() {
   $('st-run').hidden = !running;
   if (running) return updatePhaseUi();
   $('stage').dataset.phase = '';
-  $('st-title').textContent = IDLE_TITLE;
+  $('st-kick').textContent = 'Heart rate recovery test · 2½ minutes';
+  $('st-title').innerHTML = IDLE_TITLE;
   $('st-sub').textContent = IDLE_SUB;
+  renderBest();
   updateReadiness();
+}
+
+// The number to beat, while nobody's running.
+function renderBest() {
+  const today = new Date().toDateString();
+  const best = ranked().find(e => new Date(e.at).toDateString() === today);
+  const box = $('st-best');
+  box.hidden = !best;
+  if (best) box.innerHTML = `<span class="mono">Today’s best</span><b>${best.drop}<small>bpm</small></b><span>${esc(best.name)} · ${esc(best.house)}</span>`;
 }
 
 let readyKey = '';
@@ -718,21 +730,21 @@ function buildLanes() {
     el.className = 'card lane';
     el.innerHTML = `
       <div class="lane-empty">
-        <span class="lane-n">${lane.n}</span>
+        <span class="lane-ghost">0${lane.n}</span>
         <p class="lane-empty-who"></p>
         <button class="btn" data-connect>Connect armband ${lane.n}</button>
-        <p class="lane-note"></p>
+        <p class="lane-note mono"></p>
       </div>
       <header class="lane-head">
-        <span class="lane-n">${lane.n}</span>
-        <div class="lane-who"><span class="lane-name"></span><span class="lane-house"></span></div>
-        <div class="lane-tools"><span class="lane-dev"></span><button class="lane-x" data-drop title="Disconnect this armband">×</button></div>
+        <div class="lane-top mono"><span class="lane-tag">Lane 0${lane.n}</span>
+          <div class="lane-tools"><span class="lane-dev"></span><button class="lane-x" data-drop title="Disconnect this armband">×</button></div></div>
+        <div class="lane-who"><span class="lane-name"></span><span class="lane-house mono"></span></div>
       </header>
       <div class="lane-hr">
-        <div class="lane-bpm"><span class="hr" data-empty="true">--</span><span class="unit">bpm</span></div>
+        <div class="lane-bpm"><span class="hr" data-empty="true">--</span><span class="unit mono">${HEART}bpm</span></div>
         <div class="lane-stats" hidden>
-          <div data-s1><div class="k"></div><div class="v"></div></div>
-          <div data-s2><div class="k"></div><div class="v"></div></div>
+          <div data-s1><div class="k mono"></div><div class="v"></div></div>
+          <div data-s2><div class="k mono"></div><div class="v"></div></div>
         </div>
       </div>
       <div class="lane-chart"><canvas></canvas></div>
@@ -750,6 +762,7 @@ function buildLanes() {
       house: el.querySelector('.lane-house'),
       dev: el.querySelector('.lane-dev'),
       hr: el.querySelector('.hr'),
+      heart: el.querySelector('.heart'),
       stats: el.querySelector('.lane-stats'),
       s1: el.querySelector('[data-s1]'),
       s2: el.querySelector('[data-s2]'),
@@ -760,6 +773,8 @@ function buildLanes() {
     lane.chart = makeChart(el.querySelector('canvas'));
   }
 }
+
+const HEART = '<svg class="heart" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.3 3 4.5 6.7 4.5c2.1 0 3.6 1.1 4.3 2.4h2c.7-1.3 2.2-2.4 4.3-2.4 3.7 0 5.8 3.8 4.3 7.2C19.5 16.4 12 21 12 21z"/></svg>';
 
 /** Who a lane shows: the person running in it, or else the one queued for it. */
 function laneWho(lane) {
@@ -866,27 +881,47 @@ function renderGroup() {
   $('group-list').innerHTML = [
     ...done.map((m, i) => {
       const e = m.report.entry;
+      const place = ordinal(i + 1);
       return `
         <button class="h2h${i === 0 && done.length > 1 ? ' first' : ''}" data-lane="${m.lane}">
-          <div class="h2h-top"><span class="h2h-rank">${ordinal(i + 1)}</span><span class="lane-n">${m.lane}</span></div>
+          <div class="h2h-top"><span class="h2h-rank">${place.slice(0, -2)}<sup>${place.slice(-2)}</sup></span><span class="h2h-lane mono">Lane 0${m.lane}</span></div>
           <div class="h2h-name">${esc(e.name)}</div>
-          <div class="h2h-house">${esc(e.house)}</div>
-          <div class="h2h-num">${e.drop}<small>bpm</small></div>
-          <div class="h2h-label">Recovery in 60 seconds</div>
-          <div class="h2h-path">${e.endHr} → ${e.recHr}</div>
+          <div class="h2h-house mono">${esc(e.house)}</div>
+          <div class="h2h-num"><span data-count="${e.drop}">${e.drop}</span><small>bpm<br>drop</small></div>
+          <div class="h2h-path mono">${e.endHr} → ${e.recHr} bpm in 60 s</div>
           ${miniCurve(m.report)}
-          <div class="h2h-foot"><span>Resting ${e.rest} · Peak ${e.peak}</span><span class="h2h-open">Full result →</span></div>
+          <div class="h2h-foot mono"><span>Rest ${e.rest} · Peak ${e.peak}</span><span>Full result →</span></div>
         </button>`;
     }),
     ...lost.map(m => `
       <div class="h2h lost">
-        <div class="h2h-top"><span class="h2h-rank">–</span><span class="lane-n">${m.lane}</span></div>
+        <div class="h2h-top"><span class="h2h-rank">–</span><span class="h2h-lane mono">Lane 0${m.lane}</span></div>
         <div class="h2h-name">${esc(m.person.name)}</div>
-        <div class="h2h-house">${esc(m.person.house)}</div>
+        <div class="h2h-house mono">${esc(m.person.house)}</div>
         <div class="h2h-lost"><strong>Signal lost, try again</strong><span>${m.requeued ? `Back in the next group, lane ${m.lane}.` : LOST_WHY[m.reason] || ''}</span></div>
       </div>`),
   ].join('');
   $('g-print-note').textContent = '';
+  countUp($('group-list'));
+}
+
+// The scores run up from zero when the results land, together, so the
+// winner is the last one still counting.
+function countUp(root) {
+  const els = [...root.querySelectorAll('[data-count]')];
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const t0 = performance.now(), ms = 1400;
+  const step = () => {
+    const k = Math.min(1, (performance.now() - t0) / ms);
+    const ease = 1 - Math.pow(1 - k, 3);
+    const top = Math.max(...els.map(el => Number(el.dataset.count)), 1);
+    for (const el of els) {
+      const v = Number(el.dataset.count);
+      el.textContent = String(Math.min(v, Math.round(top * ease)));
+    }
+    if (k < 1) requestAnimationFrame(step);
+  };
+  step();
 }
 
 // A person's whole test as one small line, the high-knees stretch shaded.
@@ -1063,8 +1098,8 @@ function rankNote(e) {
 function renderReport() {
   const { entry: e } = S.report;
 
-  $('r-name').textContent = `Nice work, ${e.name}`;
-  $('r-meta').textContent = `${e.house} · Age ${e.age}`;
+  $('r-name').textContent = e.name;
+  $('r-meta').textContent = `${e.house} · Age ${e.age}${e.heat ? ` · Heat ${e.heat}, lane ${e.lane}` : ''}`;
   $('r-rest').textContent = e.rest;
   $('r-peak').textContent = e.peak;
   $('r-drop').textContent = e.drop;
@@ -1133,11 +1168,11 @@ function renderBoard() {
     return;
   }
   box.innerHTML = `
-    <div class="board-row head"><span>#</span><span>Name</span><span class="sm">Resting</span><span class="sm">Peak</span><span class="sm">Recovery</span></div>
+    <div class="board-row head mono"><span>#</span><span>Name</span><span class="sm">Resting</span><span class="sm">Peak</span><span class="sm">Recovery</span></div>
     ${rows.map((e, i) => `
-      <div class="board-row${i < 3 ? ' top' : ''}${e.id === S.freshId ? ' fresh' : ''}">
+      <div class="board-row${i === 0 ? ' lead' : i < 3 ? ' top' : ''}${e.id === S.freshId ? ' fresh' : ''}">
         <span class="rank">${i + 1}</span>
-        <span class="who"><span>${esc(e.name)}</span><span class="house">${esc(e.house)}</span></span>
+        <span class="who"><span>${esc(e.name)}</span><span class="house mono">${esc(e.house)}</span></span>
         <span class="sm">${e.rest}</span>
         <span class="sm">${e.peak}</span>
         <span class="drop">${e.drop}<small>bpm</small></span>
@@ -1176,8 +1211,8 @@ function readPalette() {
     line: cssVar('--line'),
     lineStrong: cssVar('--line-strong'),
     band: cssVar('--band'),
-    raised: cssVar('--surface-raised'),
-    font: getComputedStyle(document.body).fontFamily,
+    raised: cssVar('--surface'),
+    font: cssVar('--font-mono'),
   };
 }
 
@@ -1277,7 +1312,7 @@ function makeChart(canvas) {
 
     // Area, then line
     const grad = ctx.createLinearGradient(0, pad.t, 0, pad.t + ph);
-    grad.addColorStop(0, `rgba(${P.rgb},.10)`);
+    grad.addColorStop(0, `rgba(${P.rgb},.2)`);
     grad.addColorStop(1, `rgba(${P.rgb},0)`);
     ctx.save();
     ctx.beginPath(); ctx.rect(pad.l, pad.t - rem, pw, ph + rem); ctx.clip();
@@ -1386,7 +1421,13 @@ function frame() {
       const u = lane.ui;
       const ok = fresh(lane) && lane.t?.status !== 'lost';
       const text = ok ? String(lane.lastHr) : '--';
-      if (u.hr.textContent !== text) { u.hr.textContent = text; u.hr.dataset.empty = String(!ok); }
+      if (u.hr.textContent !== text) {
+        u.hr.textContent = text;
+        u.hr.dataset.empty = String(!ok);
+        // The little heart beats at the rate it's showing.
+        u.heart.dataset.on = String(ok);
+        if (ok) u.heart.style.setProperty('--beat', `${(60 / clamp(lane.lastHr, 30, 230)).toFixed(3)}s`);
+      }
       if (lane.t && S.run) {
         const t = lane.t;
         const until = t.status === 'lost' ? t.lostAt : at - S.run.start;
@@ -1478,11 +1519,9 @@ function setMenu(open) {
 }
 
 function applyTheme() {
-  const t = S.prefs.theme;
-  if (t === 'auto') document.documentElement.removeAttribute('data-theme');
-  else document.documentElement.dataset.theme = t;
+  document.documentElement.dataset.theme = S.prefs.theme === 'light' ? 'light' : 'dark';
   readPalette();
-  $('m-dark').setAttribute('aria-checked', String(palette.rgb === '255,255,255'));
+  $('m-dark').setAttribute('aria-checked', String(S.prefs.theme === 'light'));
 }
 
 let resetTimer = null;
@@ -1556,7 +1595,7 @@ function init() {
     $('m-sound').setAttribute('aria-checked', String(S.prefs.sound));
   });
   $('m-dark').addEventListener('click', () => {
-    S.prefs.theme = palette.rgb === '255,255,255' ? 'light' : 'dark';
+    S.prefs.theme = S.prefs.theme === 'light' ? 'dark' : 'light';
     savePrefs(); applyTheme();
   });
   $('m-autoprint').addEventListener('click', () => {
@@ -1574,7 +1613,6 @@ function init() {
   });
   $('receipt-preview').addEventListener('click', () => { $('receipt-preview').hidden = true; });
 
-  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
 
   document.addEventListener('keydown', e => {
     const typing = e.target.matches?.('input');
