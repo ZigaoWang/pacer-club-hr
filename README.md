@@ -89,8 +89,8 @@ The `···` menu in the top bar:
 
 - **Demo armbands**: a pretend person on every lane without a real armband,
   for trying everything. **Drop a lane's signal 1 2 3** tests "signal lost".
-- **Sound cues**: the step beat, plus beeps on each step and the last 3 seconds
-- **Dark mode**
+- **Sound cues**: beeps on each step and the last 3 seconds
+- **Light screen**: white instead of black, for a bright room
 - **Print after each test**
 - **Show receipt**: the 1-bit image for the report on screen
 - **Download results**: CSV of everyone
