@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Heart Rate Booth · Pacer Club</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- The wordmark and mark, drawn once and reused. Paths are the club's own (pacer-club-v2/src/components/brand/logo.tsx). -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <path id="p-P" d="M149.84 0.964067C165.98 -0.597933 187.06 0.63209 203.711 0.63109L306.669 0.653093L380.1 0.646074C415.817 0.664074 484.341 -2.29692 485.9 58.0441C487.249 110.344 439.213 153.745 398.476 164.424C369.348 172.06 334.281 169.352 303.832 169.414L189.493 169.457C167.507 169.445 143.905 168.95 122.114 169.798C115.4 182.604 98.6178 225.827 93.5043 240.305C65.9313 240.662 38.0117 240.422 10.4265 240.409L0 239.965C27.7471 186.888 29.6836 123.922 95.2935 107.506C128.697 99.1481 163.574 102.558 197.745 102.56L327.769 102.474C341.273 102.452 363.087 103.791 376.211 101.79C384.758 100.487 398.171 85.0171 382.456 75.6851C358.195 74.4301 327.681 75.4391 302.678 75.4371L148.526 75.4561C120.775 75.4591 90.3436 76.1451 62.7663 75.1481C81.8082 29.1711 104.865 7.68407 149.84 0.964067Z"/>
+      <g id="p-wordmark">
+        <use href="#p-P"/>
+        <path d="M656.921 0.993088C683.355 -0.814912 717.242 3.99408 731.443 32.9141C765.4 102.089 805.016 170.281 837.545 240.116C801.438 240.601 765.339 240.638 729.231 240.226C720.638 220.848 707.429 196.811 697.564 178.06L649.424 85.8651C643.886 92.0151 633.569 100.924 627.422 106.581C616.059 117.037 604.244 128.104 592.62 138.12C584.975 146.623 565.01 163.939 555.955 172.337C531.55 194.69 507.371 217.365 483.418 240.36C445.111 240.646 406.801 240.564 368.493 240.115C377.148 230.468 395.582 213.85 405.418 204.748C433.835 178.45 462.556 152.457 491.037 126.182L566.09 57.0801C599.272 26.7401 613.186 9.89409 656.921 0.993088Z"/>
+        <path d="M969.159 0.949717C992.267 -0.468283 1275.1 -0.457276 1278.04 2.07572C1277.64 8.71472 1252.6 67.4647 1248.18 78.1077L1053.97 78.3697L1002.15 78.2237C976.655 78.1367 961.392 75.7987 940.373 97.3327C920.504 117.68 913.983 157.422 947.487 164.158C959.494 166.57 976.942 165.373 989.681 165.34L1061.74 165.227L1214.22 165.155C1210.37 177.055 1203.47 192.371 1198.73 204.209C1194.69 214.302 1189.56 228.057 1185.05 237.511C1172.14 242.363 1153.1 240.607 1139.16 240.66L1057.52 240.701L963.168 240.712C925.885 240.713 888.263 245.129 856.718 217.814C812.87 179.837 829.787 111.998 858.224 69.1947C886.373 26.8177 924.301 7.83572 969.159 0.949717Z"/>
+        <path d="M1334.4 0.8893C1345.07 0.1453 1361.17 0.651302 1372.2 0.635302L1442.96 0.565295C1508.24 0.521295 1574.79 -0.09671 1639.98 0.87929C1631.41 19.9713 1621.98 49.9923 1612.42 67.7673C1610.94 70.5003 1536.02 69.3963 1527.58 69.3963L1371.23 69.5103C1368.08 75.0983 1361.93 91.1203 1359.06 97.8723C1438.86 98.9243 1520.22 97.7833 1600.26 98.0143C1593.63 116.48 1585.01 134.706 1578.48 153.036L1442.01 153.081C1407.47 152.91 1372.93 152.972 1338.39 153.267C1334.66 161.698 1330.77 172.012 1327.26 180.711L1566.89 180.702C1558.55 199.1 1550.71 221.414 1542.67 240.57L1351.49 240.608C1304.91 240.586 1256.85 241.134 1210.42 240.307L1265.2 100.521C1268.75 91.5373 1272.28 82.2373 1275.98 73.3153C1292.17 34.3423 1294.07 11.8363 1334.4 0.8893Z"/>
+        <path d="M1705.36 0.866183C1719.13 -0.345817 1740.82 0.412192 1754.99 0.419192L1846.75 0.448184L1923.22 0.402194C1940.64 0.387194 1956.8 -0.394799 1973.93 2.0972C2023.34 8.8632 2044.43 53.7892 2018.06 103.482C1994.53 147.826 1958.73 166.268 1915.22 171.28C1935.06 194.081 1954.77 217.035 1974.34 240.142C1950.03 240.529 1925.72 240.637 1901.41 240.467C1890.59 240.449 1873.37 241.164 1863.41 240.017C1845.28 218.677 1822.96 191.913 1803.96 172.039C1768.33 171.837 1727.52 171.435 1692.16 172.7C1688.57 181.123 1685.29 189.745 1681.67 198.201C1681.02 201.277 1667.29 235.652 1665.43 240.266L1605.16 240.488C1594.63 240.495 1580.91 240.898 1570.62 239.981C1580.61 213.95 1590.87 188.061 1601.42 162.32C1607.75 146.528 1615.37 125.869 1622.56 111.068C1643.61 109.949 1671.84 110.957 1693.53 110.944L1837.28 110.967C1846.46 110.974 1855.97 110.959 1865.18 110.982C1885.55 111.032 1943.84 118.038 1930.83 74.7812L1923.45 69.3712L1638.68 69.3872C1654.28 27.9242 1665.3 10.3902 1705.36 0.866183Z"/>
+      </g>
+    </defs>
+  </svg>
+
+  <header class="topbar">
+    <svg class="wordmark" viewBox="0 0 2044 241" fill="currentColor" role="img" aria-label="Pacer Club"><use href="#p-wordmark"/></svg>
+    <span class="topbar-title">Heart Rate Booth</span>
+    <span class="topbar-spacer"></span>
+
+    <span class="site-tag" id="site-tag" hidden></span>
+    <span class="status" id="status" data-state="off"><span class="status-dot"></span><span id="status-text">No armbands</span></span>
+
+    <button class="text-btn" id="btn-next" title="Next group (N)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h10M4 18h7"/></svg>
+      Next group
+    </button>
+
+    <button class="text-btn" id="btn-board" aria-pressed="false" title="Leaderboard (L)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20V12M12 20V5M19 20v-5"/></svg>
+      Leaderboard
+    </button>
+
+    <div class="menu-wrap">
+      <button class="icon-btn" id="btn-menu" aria-haspopup="true" aria-expanded="false" title="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg>
+      </button>
+      <div class="menu" id="menu" role="menu" hidden>
+        <button class="menu-item" id="m-demo" role="menuitemcheckbox" aria-checked="false">Demo armbands <span class="switch"></span></button>
+        <button class="menu-item" id="m-sound" role="menuitemcheckbox" aria-checked="true">Sound cues <span class="switch"></span></button>
+        <button class="menu-item" id="m-dark" role="menuitemcheckbox" aria-checked="false">Dark mode <span class="switch"></span></button>
+        <button class="menu-item" id="m-autoprint" role="menuitemcheckbox" aria-checked="true">Print after each test <span class="switch"></span></button>
+        <div class="menu-sep"></div>
+        <button class="menu-item" id="m-preview" role="menuitem">Show receipt <span class="hint">1-bit preview</span></button>
+        <button class="menu-item" id="m-export" role="menuitem">Download results <span class="hint">CSV</span></button>
+        <div class="menu-item" id="m-drop" hidden>Drop a lane's signal
+          <span class="drop-lanes"><button data-drop="0">1</button><button data-drop="1">2</button><button data-drop="2">3</button></span>
+        </div>
+        <button class="menu-item" id="m-undo" role="menuitem">Remove last result <span class="hint" id="m-undo-hint"></span></button>
+        <button class="menu-item" id="m-reset" role="menuitem">Reset leaderboard <span class="hint" id="m-reset-hint"></span></button>
+        <div class="menu-sep"></div>
+        <div class="menu-item fine" style="cursor:default">F full screen · N next group · L leaderboard · Esc back</div>
+      </div>
+    </div>
+
+    <button class="icon-btn" id="btn-fs" title="Full screen (F)">
+      <svg id="fs-enter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+      <svg id="fs-exit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>
+    </button>
+  </header>
+
+  <!-- 1 · Live: the shared stage on top, one lane per armband below -->
+  <main class="view view-live" id="view-live">
+    <section class="card stage" id="stage">
+      <div class="stage-main">
+        <div class="stage-text">
+          <h1 class="stage-title" id="st-title"></h1>
+          <p class="stage-sub" id="st-sub"></p>
+        </div>
+        <div class="stage-side" id="st-idle">
+          <button class="btn btn-lg" id="st-start">Start</button>
+          <p class="stage-note" id="st-note"></p>
+        </div>
+        <div class="stage-count" id="st-run" hidden>
+          <div class="count" id="t-count"><span id="t-num"></span></div>
+          <div class="count-label" id="t-label">seconds</div>
+        </div>
+      </div>
+      <div class="track" id="st-track" hidden>
+        <div class="seg" data-step="0"><div class="bar"><b></b></div><span>Sit still</span></div>
+        <div class="seg" data-step="1"><div class="bar"><b></b></div><span>High knees</span></div>
+        <div class="seg" data-step="2"><div class="bar"><b></b></div><span>Recover</span></div>
+        <button class="link-btn stop-btn" id="t-stop">Stop</button>
+      </div>
+    </section>
+
+    <section class="lanes" id="lanes"></section>
+  </main>
+
+  <!-- 2 · Head to head -->
+  <main class="view view-group" id="view-group" hidden>
+    <div class="report-head">
+      <div>
+        <h1 class="report-name" id="g-title">Results</h1>
+        <div class="report-meta">Ranked by recovery: how far heart rate dropped in the minute after high knees</div>
+      </div>
+      <div class="report-actions">
+        <span class="print-note" id="g-print-note"></span>
+        <button class="btn btn-quiet" id="g-print">Print all again</button>
+        <button class="btn" id="g-done">Next group</button>
+      </div>
+    </div>
+    <div class="podium" id="group-list"></div>
+  </main>
+
+  <!-- 3 · Report -->
+  <main class="view view-report" id="view-report" hidden>
+    <div class="report-head">
+      <div>
+        <h1 class="report-name" id="r-name"></h1>
+        <div class="report-meta" id="r-meta"></div>
+      </div>
+      <div class="report-actions">
+        <button class="btn btn-quiet" id="r-back" hidden>Back to group</button>
+        <span class="print-note" id="r-print-note"></span>
+        <button class="btn btn-quiet" id="r-print">Print again</button>
+        <button class="btn btn-quiet" id="r-board">Leaderboard</button>
+        <button class="btn" id="r-next">Next group</button>
+      </div>
+    </div>
+
+    <section class="card report-main">
+      <div class="source"><span class="tag tag-measured">Measured</span>Read by the armband during your test</div>
+      <div class="figures">
+        <div class="figure">
+          <div class="k">Resting</div>
+          <div class="v"><span id="r-rest"></span><small>bpm</small></div>
+          <div class="note">Average while sitting still</div>
+        </div>
+        <div class="figure">
+          <div class="k">Peak</div>
+          <div class="v"><span id="r-peak"></span><small>bpm</small></div>
+          <div class="note">Highest reading, not scored</div>
+        </div>
+        <div class="figure figure-hero">
+          <div class="k">Recovery in 60 seconds</div>
+          <div class="v"><span id="r-drop"></span><small>bpm</small></div>
+          <div class="note" id="r-drop-note"></div>
+        </div>
+      </div>
+      <div class="report-chart"><canvas id="r-chart"></canvas></div>
+    </section>
+
+    <aside class="report-side">
+      <section class="card side-card">
+        <h3>Heart rate zones <span class="tag">Estimated</span></h3>
+        <div class="zones" id="r-zones"></div>
+        <p class="basis" id="r-zone-basis"></p>
+        <h3 class="side-gap" id="r-guide-title">Easy runs <span class="tag">Estimated</span></h3>
+        <div class="pace-value" id="r-guide"></div>
+        <p class="pace-note" id="r-guide-note"></p>
+        <p class="basis" id="r-guide-basis"></p>
+      </section>
+      <section class="card side-card qr-card">
+        <div class="qr" id="r-qr"></div>
+        <div>
+          <h3>Your result on pacer.club</h3>
+          <p>Scan to keep it and save it to your profile.</p>
+          <p class="fine">For fun, not medical advice.</p>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <!-- 4 · Leaderboard -->
+  <main class="view view-board" id="view-board" hidden>
+    <div class="board-head">
+      <div>
+        <h1 class="board-title">Leaderboard</h1>
+        <div class="board-sub">Ranked by how far heart rate dropped in the minute after high knees</div>
+      </div>
+      <button class="btn" id="b-back">Back</button>
+    </div>
+    <div class="card board" id="board"></div>
+  </main>
+
+  <!-- The next group, typed in while the current one is still going -->
+  <div class="drawer-wrap" id="drawer" hidden>
+    <section class="drawer card" role="dialog" aria-label="Next group">
+      <header class="drawer-head">
+        <div>
+          <h2>Next group</h2>
+          <p>Fill in one lane per person. Empty lanes sit this one out.</p>
+        </div>
+        <button class="btn" id="d-done">Done</button>
+      </header>
+      <div class="drawer-lanes" id="drawer-lanes"></div>
+    </section>
+  </div>
+
+  <div class="receipt-preview" id="receipt-preview" hidden>
+    <div class="receipt-paper"></div>
+    <p>What the printer gets: 1-bit, 576 dots wide (72 mm on 80 mm paper). Click to close.</p>
+  </div>
+
+  <script src="vendor/qrcode.js"></script>
+  <script src="receipt.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
