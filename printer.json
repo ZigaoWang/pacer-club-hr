@@ -1,0 +1,13 @@
+{
+  "printer": "off",
+  "a4": {
+    "queue": ""
+  },
+  "epson": {
+    "connection": "network",
+    "host": "192.168.192.168",
+    "port": 9100,
+    "usbQueue": "EPSON_TM_T82III_raw",
+    "cut": "full"
+  }
+}
